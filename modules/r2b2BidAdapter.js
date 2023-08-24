@@ -13,9 +13,9 @@ const DEFAULT_CURRENCY = 'USD';
 const DEFAULT_TTL = 360;
 const DEFAULT_NET_REVENUE = true;
 const DEBUG_PARAM = 'pbjs_test_r2b2';
-const RENDERER_URL = 'https://delivery.r2b2.cz/static/rendering.js';
+const RENDERER_URL = 'https://delivery.r2b2.io/static/rendering.js';
 
-const SSP_DOMAIN = 'https://hb.trackad.cz';
+const SSP_DOMAIN = 'https://hb.r2b2.cz';
 const URL_BID = SSP_DOMAIN + '/openrtb2/bid';
 const URL_SYNC = SSP_DOMAIN + '/cookieSync';
 const URL_EVENT = SSP_DOMAIN + '/event';

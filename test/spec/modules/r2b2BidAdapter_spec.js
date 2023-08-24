@@ -260,7 +260,7 @@ describe('R2B2 adapter', function () {
       expect(requests).to.be.an('array').that.has.lengthOf(1);
       let request = requests[0]
       expect(request.method).to.equal('POST');
-      expect(request.url).to.equal('https://hb.trackad.cz/openrtb2/bid');
+      expect(request.url).to.equal('https://hb.r2b2.cz/openrtb2/bid');
       expect(request.data).to.be.an('object');
       expect(request.bids).to.deep.equal(bids);
     });
