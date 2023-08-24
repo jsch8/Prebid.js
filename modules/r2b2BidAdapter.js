@@ -214,26 +214,25 @@ export const spec = {
 
   interpretResponse: function(serverResponse, request) {
     let prebidResponse = [];
-    try {
-      if (!serverResponse.body.seatbid || !serverResponse.body.seatbid[0] || !serverResponse.body.seatbid[0].bid) {
-        return prebidResponse;
-      }
-      let requestImps = request.data.imp || [];
-      let response = serverResponse.body;
 
+    const response = serverResponse.body;
+    if (!response || !response.seatbid || !response.seatbid[0] || !response.seatbid[0].bid) {
+      return prebidResponse;
+    }
+    let requestImps = request.data.imp || [];
+    try {
       response.seatbid.forEach(seat => {
         let bids = seat.bid;
 
-        bids.forEach((responseBid, index) => {
+        for (let responseBid of bids) {
           let responseImpId = responseBid.impid;
           let requestCurrentImp = requestImps.find((requestImp) => requestImp.id === responseImpId);
-          if (!responseBid.impid || !requestCurrentImp) {
-            r2b2Error('Cant match bid response.', {impid: !!responseBid.impid});
+          if (!requestCurrentImp) {
+            r2b2Error('Cant match bid response.', {impid: Boolean(responseBid.impid)});
+            continue;// Skip this iteration if there's no match
           }
-          if (requestCurrentImp) {
-            prebidResponse.push(createPrebidResponseBid(requestCurrentImp, responseBid, response, request.bids));
-          }
-        })
+          prebidResponse.push(createPrebidResponseBid(requestCurrentImp, responseBid, response, request.bids));
+        }
       })
     } catch (e) {
       r2b2Error('Error while interpreting response:', {msg: e.message});
