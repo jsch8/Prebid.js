@@ -7,7 +7,7 @@ import {pbsExtensions} from '../libraries/pbsExtensions/pbsExtensions.js';
 
 const ADAPTER_VERSION = '1.0.0';
 const BIDDER_CODE = 'r2b2';
-const GVL_ID = 1234; // TODO: gvlid
+const GVL_ID = 1235;
 
 const DEFAULT_CURRENCY = 'USD';
 const DEFAULT_TTL = 360;
