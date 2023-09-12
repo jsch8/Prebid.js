@@ -4,6 +4,7 @@ import {registerBidder} from '../src/adapters/bidderFactory.js';
 import {Renderer} from '../src/Renderer.js';
 import {BANNER, VIDEO, NATIVE} from '../src/mediaTypes.js';
 import {pbsExtensions} from '../libraries/pbsExtensions/pbsExtensions.js';
+import {bidderSettings} from '../src/bidderSettings.js';
 
 const ADAPTER_VERSION = '1.0.0';
 const BIDDER_CODE = 'r2b2';
@@ -15,10 +16,11 @@ const DEFAULT_NET_REVENUE = true;
 const DEBUG_PARAM = 'pbjs_test_r2b2';
 const RENDERER_URL = 'https://delivery.r2b2.io/static/rendering.js';
 
-const SSP_DOMAIN = 'https://hb.r2b2.cz';
-const URL_BID = SSP_DOMAIN + '/openrtb2/bid';
-const URL_SYNC = SSP_DOMAIN + '/cookieSync';
-const URL_EVENT = SSP_DOMAIN + '/event';
+const ENDPOINT = bidderSettings.get(BIDDER_CODE, 'endpoint') || 'hb.r2b2.cz';
+const SERVER_URL = 'https://' + ENDPOINT;
+const URL_BID = SERVER_URL + '/openrtb2/bid';
+const URL_SYNC = SERVER_URL + '/cookieSync';
+const URL_EVENT = SERVER_URL + '/event';
 
 const URL_EVENT_ON_BIDDER_ERROR = URL_EVENT + '/bidError';
 const URL_EVENT_ON_TIMEOUT = URL_EVENT + '/timeout';
@@ -213,6 +215,7 @@ export const spec = {
   },
 
   interpretResponse: function(serverResponse, request) {
+    // r2b2Error('error message', {params: 1});
     let prebidResponse = [];
 
     const response = serverResponse.body;
