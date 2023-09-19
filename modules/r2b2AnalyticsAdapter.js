@@ -13,7 +13,7 @@ const GVLID = 1235;
 const analyticsType = 'endpoint';
 
 const DEFAULT_SERVER = 'r2b2.delivery.cz';
-const DEFAULT_EVENT_PATH = 'events.php';
+const DEFAULT_EVENT_PATH = 'prebid/events';
 const DEFAULT_ERROR_PATH = 'error.php';
 const DEFAULT_PROTOCOL = 'https';
 
@@ -25,20 +25,20 @@ const START_TIME = Date.now();
 
 const EVENT_MAP = {};
 EVENT_MAP[CONSTANTS.EVENTS.NO_BID] = 'noBid';
-EVENT_MAP[CONSTANTS.EVENTS.AUCTION_INIT] = 'auction';
+EVENT_MAP[CONSTANTS.EVENTS.AUCTION_INIT] = 'init';
 EVENT_MAP[CONSTANTS.EVENTS.BID_REQUESTED] = 'request';
 EVENT_MAP[CONSTANTS.EVENTS.BID_TIMEOUT] = 'timeout';
 EVENT_MAP[CONSTANTS.EVENTS.BID_RESPONSE] = 'response';
 EVENT_MAP[CONSTANTS.EVENTS.BID_REJECTED] = 'reject';
 EVENT_MAP[CONSTANTS.EVENTS.BIDDER_ERROR] = 'bidError';
 EVENT_MAP[CONSTANTS.EVENTS.BIDDER_DONE] = 'bidderDone';
-EVENT_MAP[CONSTANTS.EVENTS.AUCTION_END] = 'auctionEnd';
+EVENT_MAP[CONSTANTS.EVENTS.AUCTION_END] = 'auction';
 EVENT_MAP[CONSTANTS.EVENTS.BID_WON] = 'bidWon';
-EVENT_MAP[CONSTANTS.EVENTS.SET_TARGETING] = 'setTargeting';
+EVENT_MAP[CONSTANTS.EVENTS.SET_TARGETING] = 'targeting';
 EVENT_MAP[CONSTANTS.EVENTS.STALE_RENDER] = 'staleRender';
 EVENT_MAP[CONSTANTS.EVENTS.AD_RENDER_SUCCEEDED] = 'render';
 EVENT_MAP[CONSTANTS.EVENTS.AD_RENDER_FAILED] = 'renderFail';
-EVENT_MAP[CONSTANTS.EVENTS.BID_VIEWABLE] = 'bidViewable';
+EVENT_MAP[CONSTANTS.EVENTS.BID_VIEWABLE] = 'view';
 
 /* CONFIGURATION */
 let WEBSITE = 0;
@@ -59,8 +59,8 @@ function flushEvents () {
   reportEvents(events)
 }
 function processEvent (event) {
-  console.log('process event:', event);
-  console.log(JSON.stringify(event));
+  // console.log('process event:', event);
+  // console.log(JSON.stringify(event));
   eventBuffer.push(event);
   if (flushTimer) {
     clearTimeout(flushTimer);
@@ -73,37 +73,37 @@ function processEvent (event) {
   }
 }
 
-function processErrorParams(params) {
-  if (isPlainObject(params)) {
-    try {
-      return JSON.stringify(params);
-    } catch (e) { /* do nothing */ }
-  }
-  return null
-}
-function reportError (message, params) {
-  params = processErrorParams(params);
-  message = `[V-${ADAPTER_VERSION}] ${message}`;
-  const url = r2b2Analytics.getErrorUrl() +
-    `&d=${encodeURIComponent(WEBSITE)}` +
-    `&m=${encodeURIComponent(message)}` +
-    `&t=prebid` +
-    `&p=1` +
-    (params ? `&pr=${encodeURIComponent(params)}` : '') +
-    (CONFIG_ID ? `&conf=${encodeURIComponent(CONFIG_ID)}` : '') +
-    (CONFIG_VERSION ? `&conf_ver=${encodeURIComponent(CONFIG_VERSION)}` : '') +
-    `&u=${encodeURIComponent(REPORTED_URL)}`;
-  ajax(url, null, null, {});
-}
+// function processErrorParams(params) {
+//   if (isPlainObject(params)) {
+//     try {
+//       return JSON.stringify(params);
+//     } catch (e) { /* do nothing */ }
+//   }
+//   return null
+// }
+// function reportError (message, params) {
+//   params = processErrorParams(params);
+//   message = `[V-${ADAPTER_VERSION}] ${message}`;
+//   const url = r2b2Analytics.getErrorUrl() +
+//     `&d=${encodeURIComponent(WEBSITE)}` +
+//     `&m=${encodeURIComponent(message)}` +
+//     `&t=prebid` +
+//     `&p=1` +
+//     (params ? `&pr=${encodeURIComponent(params)}` : '') +
+//     (CONFIG_ID ? `&conf=${encodeURIComponent(CONFIG_ID)}` : '') +
+//     (CONFIG_VERSION ? `&conf_ver=${encodeURIComponent(CONFIG_VERSION)}` : '') +
+//     `&u=${encodeURIComponent(REPORTED_URL)}`;
+//   ajax(url, null, null, {});
+// }
 function reportEvents (events) {
   try {
-    let data = JSON.stringify(events);
+    let data = 'events=' + JSON.stringify(events);
     let url = r2b2Analytics.getUrl() +
       `?v=${encodeURIComponent(ADAPTER_VERSION)}` +
-      `&u=${encodeURIComponent(REPORTED_URL)}` +
       `&hbDomain=${encodeURIComponent(WEBSITE)}` +
       (CONFIG_ID ? `&conf=${encodeURIComponent(CONFIG_ID)}` : '') +
-      (CONFIG_VERSION ? `&conf_ver=${encodeURIComponent(CONFIG_VERSION)}` : '');
+      (CONFIG_VERSION ? `&conf_ver=${encodeURIComponent(CONFIG_VERSION)}` : '') +
+      `&u=${encodeURIComponent(REPORTED_URL)}`;
     let headers = {
       contentType: 'application/x-www-form-urlencoded'
     }
@@ -153,12 +153,8 @@ function createEvent (name, data, auctionId) {
   }
 }
 
-function handleAuctionDebug (args) {
-  console.log('auction debug:', arguments)
-  // reportError
-}
 function handleAuctionInit (args) {
-  console.log('auction init:', arguments);
+  // console.log('auction init:', arguments);
   const auctionId = args.auctionId;
   orderedAuctions.push(auctionId);
   auctionsData[auctionId] = {
@@ -183,7 +179,7 @@ function handleAuctionInit (args) {
   processEvent(event);
 }
 function handleBidRequested (args) {
-  console.log('bid request:', arguments);
+  // console.log('bid request:', arguments);
   const data = {
     b: args.bidderCode,
     u: args.bids.reduce((result, bid) => {
@@ -199,7 +195,7 @@ function handleBidRequested (args) {
   processEvent(event);
 }
 function handleBidTimeout (args) {
-  console.log('bid timeout:', arguments);
+  // console.log('bid timeout:', arguments);
   const auctionId = args.length ? args[0].auctionId : null;
   if (auctionId) {
     const data = args.reduce((result, bid) => {
@@ -214,12 +210,12 @@ function handleBidTimeout (args) {
       }
       return result
     }, {});
-    const event = createEvent(EVENT_MAP[CONSTANTS.EVENTS.BID_TIMEOUT], data, args.auctionId);
+    const event = createEvent(EVENT_MAP[CONSTANTS.EVENTS.BID_TIMEOUT], data, auctionId);
     processEvent(event);
   }
 }
 function handleNoBid (args) {
-  console.log('no bid:', arguments);
+  // console.log('no bid:', arguments);
   const data = {
     b: args.bidder,
     u: args.adUnitCode
@@ -228,7 +224,7 @@ function handleNoBid (args) {
   processEvent(event);
 }
 function handleBidResponse (args) {
-  console.log('bid response:', arguments);
+  // console.log('bid response:', arguments);
   const data = {
     b: args.bidder,
     u: args.adUnitCode,
@@ -242,7 +238,7 @@ function handleBidResponse (args) {
   processEvent(event);
 }
 function handleBidRejected (args) {
-  console.log('bid rejected:', arguments);
+  // console.log('bid rejected:', arguments);
   const data = {
     b: args.bidder,
     u: args.adUnitCode,
@@ -254,7 +250,7 @@ function handleBidRejected (args) {
   processEvent(event);
 }
 function handleBidderError (args) {
-  console.log('bidder error:', arguments);
+  // console.log('bidder error:', arguments);
   const {bidderRequest} = args;
   const data = {
     b: bidderRequest.bidderCode,
@@ -271,7 +267,7 @@ function handleBidderError (args) {
   processEvent(event);
 }
 function handleBidderDone (args) {
-  console.log('bidder done:', arguments);
+  // console.log('bidder done:', arguments);
   const data = {
     b: args.bidderCode
   };
@@ -279,7 +275,7 @@ function handleBidderDone (args) {
   processEvent(event);
 }
 function handleAuctionEnd (args) {
-  console.log('auction end:', arguments);
+  // console.log('auction end:', arguments);
   auctionsData[args.auctionId].end = args.auctionEnd;
   const highestBids = getGlobal().getHighestCpmBids() || [];
   const winningBids = [];
@@ -296,15 +292,21 @@ function handleAuctionEnd (args) {
       sz: bid.size,
     })
   });
-  // TODO: create data
   const data = {
-    wins: winningBids
+    wins: winningBids,
+    o: orderedAuctions.length,
+    bc: args.bidsReceived.length,
+    nbc: args.noBids.length,
+    brc: args.bidderRequests.reduce((count, bidderRequest) => {
+      const c = bidderRequest.bids.length || 0;
+      return count + c
+    }, 0)
   };
   const event = createEvent(EVENT_MAP[CONSTANTS.EVENTS.AUCTION_END], data, args.auctionId);
   processEvent(event);
 }
 function handleBidWon (args) {
-  console.log('bid won:', arguments);
+  // console.log('bid won:', arguments);
   const data = {
     b: args.bidder,
     u: args.adUnitCode,
@@ -312,13 +314,14 @@ function handleBidWon (args) {
     c: args.currency,
     sz: args.size,
     mt: args.mediaType,
-    at: getStandardTargeting(args.adserverTargeting)
+    at: getStandardTargeting(args.adserverTargeting),
+    o: orderedAuctions.length
   };
   const event = createEvent(EVENT_MAP[CONSTANTS.EVENTS.BID_WON], data, args.auctionId);
   processEvent(event);
 }
 function handleSetTargeting (args) {
-  console.log('set targeting:', arguments);
+  // console.log('set targeting:', arguments);
   let adId;
   const filteredTargetings = {};
   Object.keys(args).forEach((unit) => {
@@ -339,7 +342,7 @@ function handleSetTargeting (args) {
   }
 }
 function handleStaleRender (args) {
-  console.log('stale render:', arguments);
+  // console.log('stale render:', arguments);
   const data = {
     b: args.bidder,
     u: args.adUnitCode,
@@ -350,7 +353,7 @@ function handleStaleRender (args) {
   processEvent(event);
 }
 function handleRenderSuccess (args) {
-  console.log('render success:', arguments);
+  // console.log('render success:', arguments);
   const {bid} = args;
   bidsData[bid.adId].renderTime = Date.now();
   const data = {
@@ -365,7 +368,7 @@ function handleRenderSuccess (args) {
   processEvent(event);
 }
 function handleRenderFailed (args) {
-  console.log('render failed:', arguments);
+  // console.log('render failed:', arguments);
   const {bid, reason} = args;
   const data = {
     b: bid.bidder,
@@ -378,7 +381,7 @@ function handleRenderFailed (args) {
   processEvent(event);
 }
 function handleBidViewable (args) {
-  console.log('bid viewable:', arguments);
+  // console.log('bid viewable:', arguments);
   const renderTime = bidsData[args.adId].renderTime;
   const data = {
     b: args.bidder,
@@ -420,9 +423,6 @@ let r2b2Analytics = Object.assign({}, baseAdapter, {
   track(event) {
     const {eventType, args} = event;
     switch (eventType) {
-      case CONSTANTS.EVENTS.AUCTION_DEBUG:
-        handleAuctionDebug(args)
-        break;
       case CONSTANTS.EVENTS.NO_BID:
         handleNoBid(args)
         break;
