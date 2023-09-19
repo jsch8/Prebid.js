@@ -12,7 +12,7 @@ const MODULE_NAME = 'R2B2 Analytics'
 const GVLID = 1235;
 const analyticsType = 'endpoint';
 
-const DEFAULT_SERVER = 'r2b2.delivery.cz';
+const DEFAULT_SERVER = 'delivery.r2b2.cz';
 const DEFAULT_EVENT_PATH = 'prebid/events';
 const DEFAULT_ERROR_PATH = 'error.php';
 const DEFAULT_PROTOCOL = 'https';
