@@ -277,11 +277,11 @@ function handleBidderDone (args) {
 function handleAuctionEnd (args) {
   // console.log('auction end:', arguments);
   auctionsData[args.auctionId].end = args.auctionEnd;
-  const highestBids = getGlobal().getHighestCpmBids() || [];
+  const highestBids = getGlobal().getAllWinningBids() || [];
   const winningBids = [];
   highestBids.forEach((bid) => {
     bidsData[bid.adId] = {
-      id: bid.bidId,
+      id: bid.requestId,
       auctionId: bid.auctionId
     }
     winningBids.push({
@@ -386,7 +386,7 @@ function handleBidViewable (args) {
   const data = {
     b: args.bidder,
     u: args.adUnitCode,
-    rt: renderTime - Date.now()
+    rt: Date.now() - renderTime
   };
   const event = createEvent(EVENT_MAP[CONSTANTS.EVENTS.BID_VIEWABLE], data, args.auctionId);
   processEvent(event);
