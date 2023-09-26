@@ -277,7 +277,10 @@ function handleBidderDone (args) {
 function handleAuctionEnd (args) {
   // console.log('auction end:', arguments);
   auctionsData[args.auctionId].end = args.auctionEnd;
-  const highestBids = getGlobal().getAllWinningBids() || [];
+  let highestBids = getGlobal().getHighestCpmBids() || [];
+  if (highestBids.length === 0) {
+    highestBids = getGlobal().getAllWinningBids() || [];
+  }
   const winningBids = [];
   highestBids.forEach((bid) => {
     bidsData[bid.adId] = {
