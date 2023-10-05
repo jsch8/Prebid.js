@@ -110,13 +110,23 @@ const converter = ortbConverter({
 });
 
 function setUpRenderer(adUnitCode, bid) {
+  // let renderer load once in main window, but pass the renderDocument
+  let renderDoc;
+  const config = {
+    documentResolver: (bid, sourceDocument, renderDocument) => {
+      renderDoc = renderDocument;
+      return sourceDocument;
+    }
+  }
   let renderer = Renderer.install({
     url: RENDERER_URL,
+    config: config,
     id: bid.requestId,
     adUnitCode
   });
 
-  renderer.setRender(function (bid, document) {
+  renderer.setRender(function (bid, doc) {
+    doc = renderDoc || doc;
     window.R2B2 = window.R2B2 || {};
     let main = window.R2B2;
     main.HB = main.HB || {};
@@ -124,7 +134,7 @@ function setUpRenderer(adUnitCode, bid) {
     main.HB.Render.queue = main.HB.Render.queue || [];
     main.HB.Render.queue.push(() => {
       const id = pickIdFromParams(internal.mappedParams[bid.requestId])
-      main.HB.Renderer.render(id, bid)
+      main.HB.Renderer.render(id, bid, null, doc)
     })
   })
 
