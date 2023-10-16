@@ -5,6 +5,7 @@ import adapterManager from '../src/adapterManager.js';
 import {getGlobal} from '../src/prebidGlobal.js';
 import {logWarn, logError, isNumber, isStr, isPlainObject} from '../src/utils.js';
 import {getRefererInfo} from '../src/refererDetection.js';
+import {config} from '../src/config.js';
 
 const ADAPTER_VERSION = '1.0.0';
 const ADAPTER_CODE = 'r2b2';
@@ -14,9 +15,10 @@ const analyticsType = 'endpoint';
 
 const DEFAULT_SERVER = 'delivery.r2b2.cz';
 const DEFAULT_EVENT_PATH = 'prebid/events';
-const DEFAULT_ERROR_PATH = 'error.php';
+const DEFAULT_ERROR_PATH = 'error';
 const DEFAULT_PROTOCOL = 'https';
 
+const ERROR_MAX = 10;
 const BATCH_SIZE = 10;
 const BATCH_DELAY = 100;
 const REPORTED_URL = getRefererInfo().page || getRefererInfo().topmostLocation;
@@ -50,9 +52,11 @@ let LOG_SERVER = DEFAULT_SERVER;
 let orderedAuctions = [];
 let auctionsData = {};
 let bidsData = {};
+let adServerCurrency = '';
 
 let flushTimer;
 let eventBuffer = [];
+let errors = 0;
 function flushEvents () {
   let events = { prebid: eventBuffer };
   eventBuffer = [];
@@ -73,28 +77,30 @@ function processEvent (event) {
   }
 }
 
-// function processErrorParams(params) {
-//   if (isPlainObject(params)) {
-//     try {
-//       return JSON.stringify(params);
-//     } catch (e) { /* do nothing */ }
-//   }
-//   return null
-// }
-// function reportError (message, params) {
-//   params = processErrorParams(params);
-//   message = `[V-${ADAPTER_VERSION}] ${message}`;
-//   const url = r2b2Analytics.getErrorUrl() +
-//     `&d=${encodeURIComponent(WEBSITE)}` +
-//     `&m=${encodeURIComponent(message)}` +
-//     `&t=prebid` +
-//     `&p=1` +
-//     (params ? `&pr=${encodeURIComponent(params)}` : '') +
-//     (CONFIG_ID ? `&conf=${encodeURIComponent(CONFIG_ID)}` : '') +
-//     (CONFIG_VERSION ? `&conf_ver=${encodeURIComponent(CONFIG_VERSION)}` : '') +
-//     `&u=${encodeURIComponent(REPORTED_URL)}`;
-//   ajax(url, null, null, {});
-// }
+function processErrorParams(params) {
+  if (isPlainObject(params)) {
+    try {
+      return JSON.stringify(params);
+    } catch (e) { /* do nothing */ }
+  }
+  return null
+}
+function reportError (message, params) {
+  errors++;
+  if (errors > ERROR_MAX) return;
+  params = processErrorParams(params);
+  message = `[ANALYTICS-${ADAPTER_VERSION}] ${message}`;
+  const url = r2b2Analytics.getErrorUrl() +
+    `?d=${encodeURIComponent(WEBSITE)}` +
+    `&m=${encodeURIComponent(message)}` +
+    `&t=prebid` +
+    `&p=1` +
+    (params ? `&pr=${encodeURIComponent(params)}` : '') +
+    (CONFIG_ID ? `&conf=${encodeURIComponent(CONFIG_ID)}` : '') +
+    (CONFIG_VERSION ? `&conf_ver=${encodeURIComponent(CONFIG_VERSION)}` : '') +
+    `&u=${encodeURIComponent(REPORTED_URL)}`;
+  ajax(url, null, null, {});
+}
 function reportEvents (events) {
   try {
     let data = 'events=' + JSON.stringify(events);
@@ -110,7 +116,9 @@ function reportEvents (events) {
     data = data.replace(/&/g, '%26');
     ajax(url, null, data, headers);
   } catch (e) {
-    logError(`${MODULE_NAME}: Error sending events - ${e.message}`);
+    const msg = `Error sending events - ${e.message}`;
+    logError(`${MODULE_NAME}: ${msg}`);
+    reportError(msg);
   }
 }
 
@@ -162,8 +170,11 @@ function handleAuctionInit (args) {
     end: null,
     timeout: args.timeout
   };
+  const currencyObj = config.getConfig('currency');
+  adServerCurrency = (currencyObj && currencyObj.adServerCurrency) || 'USD';
   const bidderRequests = args.bidderRequests || [];
   const data = {
+    c: adServerCurrency,
     o: orderedAuctions.length,
     u: bidderRequests.reduce((result, bidderRequest) => {
       bidderRequest.bids.forEach((bid) => {
@@ -231,6 +242,8 @@ function handleBidResponse (args) {
     p: args.cpm,
     op: args.originalCpm,
     c: args.currency,
+    oc: args.originalCurrency,
+    ac: adServerCurrency,
     sz: args.size,
     rt: args.timeToRespond
   };
@@ -277,17 +290,14 @@ function handleBidderDone (args) {
 function handleAuctionEnd (args) {
   // console.log('auction end:', arguments);
   auctionsData[args.auctionId].end = args.auctionEnd;
-  let highestBids = getGlobal().getHighestCpmBids() || [];
-  if (highestBids.length === 0) {
-    highestBids = getGlobal().getAllWinningBids() || [];
-  }
-  const winningBids = [];
-  highestBids.forEach((bid) => {
+  const winningBids = getGlobal().getHighestCpmBids() || [];
+  const wins = [];
+  winningBids.forEach((bid) => {
     bidsData[bid.adId] = {
       id: bid.requestId,
       auctionId: bid.auctionId
     }
-    winningBids.push({
+    wins.push({
       b: bid.bidder,
       u: bid.adUnitCode,
       p: bid.cpm,
@@ -296,7 +306,7 @@ function handleAuctionEnd (args) {
     })
   });
   const data = {
-    wins: winningBids,
+    wins,
     o: orderedAuctions.length,
     bc: args.bidsReceived.length,
     nbc: args.noBids.length,
@@ -314,7 +324,9 @@ function handleBidWon (args) {
     b: args.bidder,
     u: args.adUnitCode,
     p: args.cpm,
+    op: args.originalCpm,
     c: args.currency,
+    oc: args.originalCurrency,
     sz: args.size,
     mt: args.mediaType,
     at: getStandardTargeting(args.adserverTargeting),
@@ -425,52 +437,56 @@ let r2b2Analytics = Object.assign({}, baseAdapter, {
   },
   track(event) {
     const {eventType, args} = event;
-    switch (eventType) {
-      case CONSTANTS.EVENTS.NO_BID:
-        handleNoBid(args)
-        break;
-      case CONSTANTS.EVENTS.AUCTION_INIT:
-        handleAuctionInit(args)
-        break;
-      case CONSTANTS.EVENTS.BID_REQUESTED:
-        handleBidRequested(args)
-        break;
-      case CONSTANTS.EVENTS.BID_TIMEOUT:
-        handleBidTimeout(args)
-        break;
-      case CONSTANTS.EVENTS.BID_RESPONSE:
-        handleBidResponse(args)
-        break;
-      case CONSTANTS.EVENTS.BID_REJECTED:
-        handleBidRejected(args)
-        break;
-      case CONSTANTS.EVENTS.BIDDER_ERROR:
-        handleBidderError(args)
-        break;
-      case CONSTANTS.EVENTS.BIDDER_DONE:
-        handleBidderDone(args)
-        break;
-      case CONSTANTS.EVENTS.AUCTION_END:
-        handleAuctionEnd(args)
-        break;
-      case CONSTANTS.EVENTS.BID_WON:
-        handleBidWon(args)
-        break;
-      case CONSTANTS.EVENTS.SET_TARGETING:
-        handleSetTargeting(args)
-        break;
-      case CONSTANTS.EVENTS.STALE_RENDER:
-        handleStaleRender(args)
-        break;
-      case CONSTANTS.EVENTS.AD_RENDER_SUCCEEDED:
-        handleRenderSuccess(args)
-        break;
-      case CONSTANTS.EVENTS.AD_RENDER_FAILED:
-        handleRenderFailed(args)
-        break;
-      case CONSTANTS.EVENTS.BID_VIEWABLE:
-        handleBidViewable(args)
-        break;
+    try {
+      switch (eventType) {
+        case CONSTANTS.EVENTS.NO_BID:
+          handleNoBid(args)
+          break;
+        case CONSTANTS.EVENTS.AUCTION_INIT:
+          handleAuctionInit(args)
+          break;
+        case CONSTANTS.EVENTS.BID_REQUESTED:
+          handleBidRequested(args)
+          break;
+        case CONSTANTS.EVENTS.BID_TIMEOUT:
+          handleBidTimeout(args)
+          break;
+        case CONSTANTS.EVENTS.BID_RESPONSE:
+          handleBidResponse(args)
+          break;
+        case CONSTANTS.EVENTS.BID_REJECTED:
+          handleBidRejected(args)
+          break;
+        case CONSTANTS.EVENTS.BIDDER_ERROR:
+          handleBidderError(args)
+          break;
+        case CONSTANTS.EVENTS.BIDDER_DONE:
+          handleBidderDone(args)
+          break;
+        case CONSTANTS.EVENTS.AUCTION_END:
+          handleAuctionEnd(args)
+          break;
+        case CONSTANTS.EVENTS.BID_WON:
+          handleBidWon(args)
+          break;
+        case CONSTANTS.EVENTS.SET_TARGETING:
+          handleSetTargeting(args)
+          break;
+        case CONSTANTS.EVENTS.STALE_RENDER:
+          handleStaleRender(args)
+          break;
+        case CONSTANTS.EVENTS.AD_RENDER_SUCCEEDED:
+          handleRenderSuccess(args)
+          break;
+        case CONSTANTS.EVENTS.AD_RENDER_FAILED:
+          handleRenderFailed(args)
+          break;
+        case CONSTANTS.EVENTS.BID_VIEWABLE:
+          handleBidViewable(args)
+          break;
+      }
+    } catch (e) {
+      reportError(`${eventType} - ${e.message}`)
     }
   }
 });
