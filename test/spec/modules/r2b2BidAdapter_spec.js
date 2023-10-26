@@ -1,6 +1,5 @@
 import {expect} from 'chai';
 import {spec, internal as r2b2, internal} from 'modules/r2b2BidAdapter.js';
-import { createEidsArray } from 'modules/userId/eids.js';
 import * as utils from '../../../src/utils';
 import 'modules/schain.js';
 import 'modules/userId/index.js';
@@ -397,15 +396,7 @@ describe('R2B2 adapter', function () {
     });
 
     it('should pass extended ids', function () {
-      bids[0].userIdAsEids = createEidsArray({
-        tdid: 'TTD_ID_FROM_USER_ID_MODULE',
-        pubcid: 'pubCommonId_FROM_USER_ID_MODULE',
-      });
-      let requests = spec.buildRequests(bids, bidderRequest);
-      let request = requests[0];
-      let eids = request.data.user.ext.eids;
-
-      expect(eids).to.deep.equal([
+      let eidsArray = [
         {
           source: 'adserver.org',
           uids: [
@@ -427,7 +418,13 @@ describe('R2B2 adapter', function () {
             },
           ],
         },
-      ]);
+      ];
+      bids[0].userIdAsEids = eidsArray;
+      let requests = spec.buildRequests(bids, bidderRequest);
+      let request = requests[0];
+      let eids = request.data.user.ext.eids;
+
+      expect(eids).to.deep.equal(eidsArray);
     });
   });
 
