@@ -171,7 +171,7 @@ function createPrebidResponseBid(requestImp, bidResponse, serverResponse, bids) 
   const mediaType = bidResponse.ext.prebid.type;
   let bidOut = {
     requestId: bidId,
-    cpm: bidResponse.price.toFixed(2),
+    cpm: bidResponse.price,
     creativeId: bidResponse.crid,
     width: bidResponse.w,
     height: bidResponse.h,

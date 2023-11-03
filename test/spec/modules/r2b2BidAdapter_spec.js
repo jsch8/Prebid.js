@@ -445,7 +445,7 @@ describe('R2B2 adapter', function () {
       expect(result).to.be.an('array').that.has.lengthOf(1);
       let bid = result[0];
       expect(bid.requestId).to.equal(impId);
-      expect(bid.cpm).to.equal(price.toFixed(2));
+      expect(bid.cpm).to.equal(price);
       expect(bid.ad).to.equal(ad);
       expect(bid.currency).to.equal('USD');
       expect(bid.mediaType).to.equal('banner');
@@ -513,12 +513,12 @@ describe('R2B2 adapter', function () {
       let secondBid = result[1];
       expect(firstBid.requestId).to.equal(impId);
       expect(firstBid.ad).to.equal(ad);
-      expect(firstBid.cpm).to.equal(price.toFixed(2));
+      expect(firstBid.cpm).to.equal(price);
       expect(firstBid.width).to.equal(300);
       expect(firstBid.height).to.equal(250);
       expect(secondBid.requestId).to.equal(impId2);
       expect(secondBid.ad).to.equal(ad2);
-      expect(secondBid.cpm).to.equal(price2.toFixed(2));
+      expect(secondBid.cpm).to.equal(price2);
       expect(secondBid.width).to.equal(w2);
       expect(secondBid.height).to.equal(h2);
     });
