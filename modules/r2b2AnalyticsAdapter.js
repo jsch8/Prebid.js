@@ -7,7 +7,7 @@ import {logWarn, logError, isNumber, isStr, isPlainObject} from '../src/utils.js
 import {getRefererInfo} from '../src/refererDetection.js';
 import {config} from '../src/config.js';
 
-const ADAPTER_VERSION = '1.0.0';
+const ADAPTER_VERSION = '1.1.0';
 const ADAPTER_CODE = 'r2b2';
 const MODULE_NAME = 'R2B2 Analytics'
 const GVLID = 1235;
@@ -58,7 +58,7 @@ let flushTimer;
 let eventBuffer = [];
 let errors = 0;
 function flushEvents () {
-  let events = { prebid: eventBuffer };
+  let events = { prebid: { e: eventBuffer, c: adServerCurrency } };
   eventBuffer = [];
   reportEvents(events)
 }
@@ -170,11 +170,8 @@ function handleAuctionInit (args) {
     end: null,
     timeout: args.timeout
   };
-  const currencyObj = config.getConfig('currency');
-  adServerCurrency = (currencyObj && currencyObj.adServerCurrency) || 'USD';
   const bidderRequests = args.bidderRequests || [];
   const data = {
-    c: adServerCurrency,
     o: orderedAuctions.length,
     u: bidderRequests.reduce((result, bidderRequest) => {
       bidderRequest.bids.forEach((bid) => {
@@ -243,7 +240,6 @@ function handleBidResponse (args) {
     op: args.originalCpm,
     c: args.currency,
     oc: args.originalCurrency,
-    ac: adServerCurrency,
     sz: args.size,
     rt: args.timeToRespond
   };
@@ -438,6 +434,10 @@ let r2b2Analytics = Object.assign({}, baseAdapter, {
   track(event) {
     const {eventType, args} = event;
     try {
+      if (!adServerCurrency) {
+        const currencyObj = config.getConfig('currency');
+        adServerCurrency = (currencyObj && currencyObj.adServerCurrency) || 'USD';
+      }
       switch (eventType) {
         case CONSTANTS.EVENTS.NO_BID:
           handleNoBid(args)
