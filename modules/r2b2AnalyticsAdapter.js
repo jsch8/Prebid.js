@@ -241,6 +241,7 @@ function handleBidResponse (args) {
     c: args.currency,
     oc: args.originalCurrency,
     sz: args.size,
+    st: args.status,
     rt: args.timeToRespond
   };
   const event = createEvent(EVENT_MAP[CONSTANTS.EVENTS.BID_RESPONSE], data, args.auctionId);
