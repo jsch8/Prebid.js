@@ -284,6 +284,25 @@ function handleBidderDone (args) {
   const event = createEvent(EVENT_MAP[CONSTANTS.EVENTS.BIDDER_DONE], data, args.auctionId);
   processEvent(event);
 }
+function getAuctionUnitsData (auctionObject) {
+  let unitsData = {};
+  const {bidsReceived, bidsRejected} = auctionObject;
+  let _unitsDataBidReducer = function(data, bid, key) {
+    const {adUnitCode, bidder} = bid;
+    data[adUnitCode] = data[adUnitCode] || {};
+    data[adUnitCode][key] = data[adUnitCode][key] || {};
+    data[adUnitCode][key][bidder] = (data[adUnitCode][key][bidder] || 0) + 1;
+    return data
+  };
+  unitsData = bidsReceived.reduce((data, bid) => {
+    if (!bid.cpm) return data;
+    return _unitsDataBidReducer(data, bid, 'b')
+  }, unitsData);
+  unitsData = bidsRejected.reduce((data, bid) => {
+    return _unitsDataBidReducer(data, bid, 'rj')
+  }, unitsData);
+  return unitsData
+}
 function handleAuctionEnd (args) {
   // console.log('auction end:', arguments);
   auctionsData[args.auctionId].end = args.auctionEnd;
@@ -304,9 +323,11 @@ function handleAuctionEnd (args) {
   });
   const data = {
     wins,
+    u: getAuctionUnitsData(args),
     o: orderedAuctions.length,
     bc: args.bidsReceived.length,
     nbc: args.noBids.length,
+    rjc: args.bidsRejected.length,
     brc: args.bidderRequests.reduce((count, bidderRequest) => {
       const c = bidderRequest.bids.length || 0;
       return count + c
