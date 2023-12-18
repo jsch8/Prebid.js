@@ -313,13 +313,15 @@ function handleAuctionEnd (args) {
       id: bid.requestId,
       auctionId: bid.auctionId
     }
-    wins.push({
-      b: bid.bidder,
-      u: bid.adUnitCode,
-      p: bid.cpm,
-      c: bid.currency,
-      sz: bid.size,
-    })
+    if(bid.auctionId === args.auctionId) {
+      wins.push({
+        b: bid.bidder,
+        u: bid.adUnitCode,
+        p: bid.cpm,
+        c: bid.currency,
+        sz: bid.size,
+      })
+    }
   });
   const data = {
     wins,
