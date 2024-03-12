@@ -20,7 +20,7 @@ const DEFAULT_PROTOCOL = 'https';
 
 const ERROR_MAX = 10;
 const BATCH_SIZE = 10;
-const BATCH_DELAY = 100;
+const BATCH_DELAY = 1000;
 const REPORTED_URL = getRefererInfo().page || getRefererInfo().topmostLocation;
 
 const START_TIME = Date.now();
@@ -313,7 +313,7 @@ function handleAuctionEnd (args) {
       id: bid.requestId,
       auctionId: bid.auctionId
     }
-    if(bid.auctionId === args.auctionId) {
+    if (bid.auctionId === args.auctionId) {
       wins.push({
         b: bid.bidder,
         u: bid.adUnitCode,
